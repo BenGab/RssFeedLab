@@ -21,9 +21,14 @@ namespace RssFeedLab
         static void Main(string[] args)
         {
             string[] urls = new string[] { "http://feeds.bbci.co.uk/news/world/rss.xml", "http://feeds.bbci.co.uk/news/technology/rss.xml" };
+            ProcessRssFeeds(urls).Wait();
+        }
+
+        private static async Task ProcessRssFeeds(string[] urls)
+        {
             List<Task<string[]>> threads = new List<Task<string[]>>();
 
-            foreach(var url in urls)
+            foreach (var url in urls)
             {
                 Task<string[]> task = Task<string[]>.Run(() =>
                 {
@@ -33,18 +38,15 @@ namespace RssFeedLab
                 threads.Add(task);
             }
 
-            var tResult = Task.WhenAll(threads).ContinueWith(results =>
+            string[][] result = await Task.WhenAll(threads);
+
+            foreach (var itemd1 in result)
             {
-                List<string> res = new List<string>();
-
-                foreach(string[] item in results.Result)
+                foreach (var itemd2 in itemd1)
                 {
-                    res.AddRange(item);
+                    Console.WriteLine(itemd2);
                 }
-                return res;
-            });
-
-            var rr = tResult.GetAwaiter().GetResult();
+            }
         }
 
         private static string[] GetTop3Feeds(string url)
@@ -52,7 +54,7 @@ namespace RssFeedLab
             var doc = XDocument.Load(url);
 
             var query = (from channelItem in doc.Descendants("item")
-                        select channelItem.Element("title").Value).Take(3);
+                         select channelItem.Element("title").Value).Take(3);
 
             return query.ToArray();
         }
