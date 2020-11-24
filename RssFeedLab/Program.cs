@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace RssFeedLab
@@ -20,23 +21,30 @@ namespace RssFeedLab
         static void Main(string[] args)
         {
             string[] urls = new string[] { "http://feeds.bbci.co.uk/news/world/rss.xml", "http://feeds.bbci.co.uk/news/technology/rss.xml" };
-            List<string> result = new List<string>();
-            List<Thread> threads = new List<Thread>();
+            List<Task<string[]>> threads = new List<Task<string[]>>();
 
             foreach(var url in urls)
             {
-                Thread rssThread = new Thread(() =>
-               {
-                   GetTop3Feeds(url);
-                   result.AddRange(GetTop3Feeds(url));
-               });
+                Task<string[]> task = Task<string[]>.Run(() =>
+                {
+                    return GetTop3Feeds(url);
+                });
 
-                threads.Add(rssThread);
+                threads.Add(task);
             }
 
-            threads.ForEach(t => t.Start());
-            threads.ForEach(t => t.Join(5000));
+            var tResult = Task.WhenAll(threads).ContinueWith(results =>
+            {
+                List<string> res = new List<string>();
 
+                foreach(string[] item in results.Result)
+                {
+                    res.AddRange(item);
+                }
+                return res;
+            });
+
+            var rr = tResult.GetAwaiter().GetResult();
         }
 
         private static string[] GetTop3Feeds(string url)
